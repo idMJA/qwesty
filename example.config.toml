@@ -1,0 +1,46 @@
+# Qwesty Configuration Example
+# Rename to config.toml to use this file
+
+[discord]
+# Your Discord user token
+token = "your_discord_user_token"
+
+# Locale mode: "single" (en-US) or "all" (check all 33+ locales)
+locale_mode = "single"
+
+# Discord super properties header (X-Super-Properties) base64 JSON string
+# Optional: if not set or invalid, a default fallback will be used automatically
+super_properties = "your_base64_super_properties"
+
+# Discord webhook entries for notifications (define one or more webhooks as entries under [[discord.webhooks]])
+
+## Multiple webhooks example:
+[[discord.webhooks]]
+name = "Channel A"
+url = "https://discordapp.com/api/webhooks/YOUR_ID/YOUR_TOKEN"
+
+# [[discord.webhooks]]
+# name = "Channel B"
+# url = "https://discordapp.com/api/webhooks/YOUR_ID/YOUR_TOKEN_B"
+
+# you can add more webhook entries as needed
+
+[notifier]
+# Filter quests by reward type: "all", "orbs", or "decor"
+reward_filter = "all"
+
+# How often to check for new quests (in minutes)
+fetch_interval_minutes = 30
+
+# Exit after first check (useful for cron jobs)
+run_once = false
+
+# Storage type: "json" (persistent file-based) or "memory" (in-memory only)
+storage_type = "memory"
+
+# Path where to store the JSON file (relative or absolute)
+storage_path = "./known-quests.json"
+
+# If true, the notifier will send notifications for all currently available quests on first run.
+# If false (default), it will treat existing quests as already seen and not notify on first run.
+initial_send_all = false
