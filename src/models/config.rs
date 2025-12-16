@@ -6,6 +6,8 @@ use std::path::Path;
 pub struct Config {
     pub discord: DiscordConfig,
     pub notifier: NotifierConfig,
+    pub mode: Option<ModeConfig>,
+    pub region: Option<RegionConfig>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -32,6 +34,26 @@ pub struct NotifierConfig {
     pub initial_send_all: Option<bool>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ModeConfig {
+    /// "collector" | "agent"
+    pub role: Option<String>,
+    /// Only for agents
+    pub collector_url: Option<String>,
+    /// Only for agents
+    pub collector_token: Option<String>,
+    /// Only for collector
+    pub accept_token: Option<String>,
+    /// Port for ingest server (collector only)
+    pub ingest_port: Option<u16>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RegionConfig {
+    /// Region code like "en-US", "ko-KR", etc.
+    pub code: Option<String>,
+}
+
 impl Default for NotifierConfig {
     fn default() -> Self {
         Self {
@@ -46,6 +68,10 @@ impl Default for NotifierConfig {
 }
 
 impl Config {
+    /// Load configuration from `config.toml`.
+    ///
+    /// # Errors
+    /// Returns `ConfigError` if file not found, IO fails, or parsing fails.
     pub fn load() -> Result<Self, ConfigError> {
         Self::load_from_toml("config.toml")
     }
@@ -57,13 +83,20 @@ impl Config {
 
         let content = fs::read_to_string(path).map_err(|e| ConfigError::IoError(e.to_string()))?;
 
-        let config: Config =
+        let mut config: Self =
             toml::from_str(&content).map_err(|e| ConfigError::ParseError(e.to_string()))?;
 
         if config.discord.token.is_empty() || config.discord.token == "your_discord_user_token" {
             return Err(ConfigError::InvalidToken(
                 "Discord token is missing or not configured".to_string(),
             ));
+        }
+
+        // normalize role to lowercase
+        if let Some(mode) = &mut config.mode {
+            if let Some(role) = &mut mode.role {
+                *role = role.trim().to_lowercase();
+            }
         }
 
         Ok(config)
@@ -116,6 +149,57 @@ impl Config {
     #[must_use]
     pub fn initial_send_all(&self) -> bool {
         self.notifier.initial_send_all.unwrap_or(false)
+    }
+
+    #[must_use]
+    pub fn role(&self) -> &str {
+        self.mode
+            .as_ref()
+            .and_then(|m| m.role.as_deref())
+            .unwrap_or("collector")
+    }
+
+    #[must_use]
+    pub fn is_collector(&self) -> bool {
+        self.role() == "collector"
+    }
+
+    #[must_use]
+    pub fn is_agent(&self) -> bool {
+        self.role() == "agent"
+    }
+
+    #[must_use]
+    pub fn collector_url(&self) -> Option<&str> {
+        self.mode.as_ref().and_then(|m| m.collector_url.as_deref())
+    }
+
+    #[must_use]
+    pub fn collector_token(&self) -> Option<&str> {
+        self.mode
+            .as_ref()
+            .and_then(|m| m.collector_token.as_deref())
+    }
+
+    #[must_use]
+    pub fn accept_token(&self) -> Option<&str> {
+        self.mode.as_ref().and_then(|m| m.accept_token.as_deref())
+    }
+
+    #[must_use]
+    pub fn region_code(&self) -> &str {
+        self.region
+            .as_ref()
+            .and_then(|r| r.code.as_deref())
+            .unwrap_or_else(|| self.locale_mode())
+    }
+
+    #[must_use]
+    pub fn ingest_port(&self) -> u16 {
+        self.mode
+            .as_ref()
+            .and_then(|m| m.ingest_port)
+            .unwrap_or(8080)
     }
 }
 

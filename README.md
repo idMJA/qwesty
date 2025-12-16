@@ -133,6 +133,99 @@ docker build -t qwesty .
 docker run -v $(pwd)/config.toml:/app/config.toml:ro -v /data:/data qwesty
 ```
 
+## Multi-Region Setup (Agent/Collector)
+
+Qwesty supports distributed multi-region quest monitoring through an **Agent/Collector** architecture. This allows you to monitor quests from multiple geographic regions (e.g., Korea, US, Europe) while centralizing notifications.
+
+### Architecture
+
+- **Collector** (Host A): Central hub that receives quest data from agents and sends notifications
+  - Runs ingest server on port 8080 (configurable)
+  - Also acts as agent for its local region
+  - Sends unified notifications via configured webhooks
+  
+- **Agent** (Hosts B, C, ...): Lightweight workers in different regions
+  - Fetches quests for assigned region
+  - Sends quest data to Collector
+  - No webhooks required
+
+### Collector Setup
+
+```toml
+[mode]
+role = "collector"
+accept_token = "your-shared-secret"  # Agents must use this token
+ingest_port = 8080  # Optional, defaults to 8080
+
+[region]
+code = "id-ID"  # Your collector's local region
+
+[discord]
+token = "your_discord_token"
+
+[[discord.webhooks]]
+name = "Global Notifications"
+url = "https://discordapp.com/api/webhooks/ID/TOKEN"
+```
+
+**Run Collector:**
+```bash
+cargo run
+# or with Docker, expose port 8080
+docker run -p 8080:8080 -v $(pwd)/config.toml:/app/config.toml:ro qwesty
+```
+
+> [!IMPORTANT]
+> Put HTTPS reverse proxy (Caddy/Nginx) in front of the collector for secure communication.
+
+### Agent Setup
+
+```toml
+[mode]
+role = "agent"
+collector_url = "https://your-collector.example.com/ingest"
+collector_token = "your-shared-secret"  # Must match collector's accept_token
+
+[region]
+code = "ko-KR"  # Agent's region (ko-KR, en-US, ja-JP, etc.)
+
+[discord]
+token = "your_discord_token"  # Still required to fetch quests
+
+# No webhooks needed for agents
+```
+
+**Run Agent:**
+```bash
+cargo run
+# or
+docker run -v $(pwd)/config.toml:/app/config.toml:ro qwesty
+```
+
+### API Endpoints
+
+**Collector exposes:**
+- `POST /ingest` - Receives quest payloads from agents
+  - Auth: `Authorization: Bearer <token>`
+  - Body: `{ "region": "ko-KR", "quests": [...], "source": "agent" }`
+  - Returns: `{ "accepted": N, "deduped": M }`
+- `GET /health` - Health check endpoint
+
+### How It Works
+
+1. **Agent** fetches quests for its configured region
+2. **Agent** POSTs quest data to Collector's `/ingest` endpoint with bearer token
+3. **Collector** validates token, deduplicates quests by `(region, id)`
+4. **Collector** sends Discord notifications for new quests
+5. **Collector** persists deduplicated quests to storage
+
+### Security
+
+- Use HTTPS with reverse proxy (Caddy/Nginx recommended)
+- Keep `accept_token`/`collector_token` secret and complex
+- Rotate tokens periodically
+- Optional: IP allowlist for known agents
+
 ## Multi-Locale Mode
 
 When `locale_mode = "all"`:

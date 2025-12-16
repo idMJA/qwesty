@@ -7,7 +7,7 @@ where
     F: Fn(&T) -> K,
 {
     let mut seen = HashMap::new();
-    for item in items.iter() {
+    for item in items {
         seen.entry(key_fn(item)).or_insert_with(|| item.clone());
     }
     seen.into_values().collect()

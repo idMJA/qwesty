@@ -16,12 +16,16 @@ impl QuestClient {
         }
     }
 
+    /// Fetch quests from direct API given locale code
+    ///
+    /// # Errors
+    /// Returns `ClientError` if request fails or response parsing fails.
     pub async fn fetch_quests_with_locale(
         &self,
         token: &str,
         locale: &str,
     ) -> Result<Vec<Quest>, ClientError> {
-        debug!("fetching quests via direct API for locale: {}", locale);
+        debug!("fetching quests via direct API for locale: {locale}");
 
         let response = self
             .client

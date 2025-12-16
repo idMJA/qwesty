@@ -1,17 +1,21 @@
 use crate::models::{Quest, StoredQuest};
 use crate::utils::{ensure_parent_dir, read_json_file, write_json_file};
 use log::{debug, info, warn};
-use once_cell::sync::Lazy;
 use std::path::Path;
-use std::sync::Mutex;
+use std::sync::{LazyLock, Mutex};
 
-static IN_MEMORY_QUESTS: Lazy<Mutex<Vec<StoredQuest>>> = Lazy::new(|| Mutex::new(Vec::new()));
+static IN_MEMORY_QUESTS: LazyLock<Mutex<Vec<StoredQuest>>> =
+    LazyLock::new(|| Mutex::new(Vec::new()));
 
-static STORAGE_PATH: Lazy<Mutex<String>> =
-    Lazy::new(|| Mutex::new("./known-quests.json".to_string()));
+static STORAGE_PATH: LazyLock<Mutex<String>> =
+    LazyLock::new(|| Mutex::new("./known-quests.json".to_string()));
 
-static STORAGE_TYPE: Lazy<Mutex<String>> = Lazy::new(|| Mutex::new("json".to_string()));
+static STORAGE_TYPE: LazyLock<Mutex<String>> = LazyLock::new(|| Mutex::new("json".to_string()));
 
+/// Initialize storage backend.
+///
+/// # Panics
+/// Panics if mutex locks are poisoned.
 pub fn init_storage(storage_type: &str, storage_path: &str) {
     *STORAGE_TYPE.lock().unwrap() = storage_type.to_string();
     *STORAGE_PATH.lock().unwrap() = storage_path.to_string();
@@ -20,13 +24,14 @@ pub fn init_storage(storage_type: &str, storage_path: &str) {
         let _ = ensure_parent_dir(storage_path);
     }
 
-    info!(
-        "storage initialized - type: {}, path: {}",
-        storage_type, storage_path
-    );
+    info!("storage initialized - type: {storage_type}, path: {storage_path}");
 }
 
 #[must_use]
+/// Load stored quests from backend.
+///
+/// # Panics
+/// Panics if mutex locks are poisoned.
 pub fn load_stored_quests() -> Vec<StoredQuest> {
     let storage_type = STORAGE_TYPE.lock().unwrap().clone();
 
@@ -59,12 +64,19 @@ pub fn load_stored_quests() -> Vec<StoredQuest> {
             }
         }
         _ => {
-            warn!("unknown storage type: {}", storage_type);
+            warn!("unknown storage type: {storage_type}");
             Vec::new()
         }
     }
 }
 
+/// Save quests to backend.
+///
+/// # Errors
+/// Returns error if storage backend fails.
+///
+/// # Panics
+/// Panics if mutex locks are poisoned.
 pub fn save_quests(quests: &[StoredQuest]) -> Result<(), Box<dyn std::error::Error>> {
     let storage_type = STORAGE_TYPE.lock().unwrap().clone();
 
@@ -83,7 +95,7 @@ pub fn save_quests(quests: &[StoredQuest]) -> Result<(), Box<dyn std::error::Err
             info!("saved {} quests to {}", quests.len(), storage_path);
             Ok(())
         }
-        _ => Err(format!("unknown storage type: {}", storage_type).into()),
+        _ => Err(format!("unknown storage type: {storage_type}").into()),
     }
 }
 

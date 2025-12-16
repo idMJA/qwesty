@@ -7,6 +7,7 @@ use tokio::time::sleep;
 
 const DISCORD_CDN: &str = "https://cdn.discordapp.com/";
 
+#[derive(Clone)]
 pub struct WebhookNotifier {
     name: Option<String>,
     webhook_url: String,
@@ -23,6 +24,10 @@ impl WebhookNotifier {
         }
     }
 
+    /// Send notification for full quest details
+    ///
+    /// # Errors
+    /// Returns `NotifyError` if webhook request fails.
     pub async fn notify_full(&self, quests: &[Quest]) -> Result<(), NotifyError> {
         if quests.is_empty() {
             debug!("no quests to notify");
@@ -110,7 +115,7 @@ impl WebhookNotifier {
         );
 
         // small pause to avoid hammering the webhook rate limits
-        let _ = sleep(Duration::from_millis(250)).await;
+        () = sleep(Duration::from_millis(250)).await;
         Ok(())
     }
 }
@@ -148,7 +153,7 @@ fn reward_media_url(rewards_config: &crate::models::QuestRewardsConfig) -> Strin
                     // quests/<quest_id>/<file>.mp4  -> append ?format=png to force image
                     format!("https://cdn.discordapp.com/{asset}?format=png")
                 } else {
-                    asset.to_string()
+                    asset.clone()
                 }
             },
         )

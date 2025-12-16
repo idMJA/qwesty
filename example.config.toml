@@ -44,3 +44,21 @@ storage_path = "./known-quests.json"
 # If true, the notifier will send notifications for all currently available quests on first run.
 # If false (default), it will treat existing quests as already seen and not notify on first run.
 initial_send_all = false
+
+[mode]
+# role can be "collector" or "agent"
+role = "collector"
+
+# For agents only: where to send ingestion
+# collector_url = "https://host-a.example.com/ingest"
+# collector_token = "super-secret"
+
+# For collector only: token to accept from agents
+# accept_token = "super-secret"
+
+# For collector only: port for ingest server (default 8080)
+# ingest_port = 8080
+
+[region]
+# Region code like "en-US", "ko-KR", etc. Collector also acts for its local region.
+code = "en-US"
