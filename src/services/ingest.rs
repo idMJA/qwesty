@@ -4,6 +4,7 @@ use axum::http::StatusCode;
 use axum::{extract::State, routing::post, Json, Router};
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
@@ -108,13 +109,27 @@ async fn ingest_handler(
     }
 
     if !state.notifiers.is_empty() {
-        let new_quest_ids: Vec<String> = new_only
+        let mut new_quest_ids: Vec<String> = new_only
             .iter()
             .map(|q| {
-                // strip region prefix to get original id
-                q.id.split(':').nth(1).unwrap_or(&q.id).to_string()
+                q.id.split(':')
+                    .next_back()
+                    .unwrap_or(q.id.as_str())
+                    .to_string()
             })
             .collect();
+
+        // build base-id set from already stored to suppress cross-region duplicates
+        let seen_base: HashSet<String> = stored
+            .iter()
+            .map(|q| {
+                q.id.split(':')
+                    .next_back()
+                    .unwrap_or(q.id.as_str())
+                    .to_string()
+            })
+            .collect();
+        new_quest_ids.retain(|id| !seen_base.contains(id));
 
         let full_new_quests: Vec<_> = payload
             .quests
