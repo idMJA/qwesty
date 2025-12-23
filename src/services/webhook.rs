@@ -176,8 +176,10 @@ fn build_tasks_desc(task_config: Option<&crate::models::QuestTaskConfigV2>) -> S
                     "WATCH_VIDEO_ON_MOBILE" => "Watch video on mobile",
                     _ => task_type.as_str(),
                 };
-                let duration_mins = task.target / 60;
-                let _ = writeln!(desc, "\n- {platform} ({duration_mins} minutes)");
+                // target is in seconds; display minutes rounded up (59s -> 1 minute)
+                let minutes = task.target.div_ceil(60);
+                let unit = if minutes == 1 { "minute" } else { "minutes" };
+                let _ = writeln!(desc, "\n- {platform} ({minutes} {unit})");
             }
             desc
         },
