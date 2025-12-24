@@ -117,7 +117,11 @@ fn init_app(config: &Config) -> Result<AppInit, Box<dyn std::error::Error>> {
         Some(entries) if !entries.is_empty() => entries
             .iter()
             .map(|entry| {
-                services::webhook::WebhookNotifier::new(entry.url.clone(), entry.name.clone())
+                services::webhook::WebhookNotifier::new(
+                    entry.url.clone(),
+                    entry.name.clone(),
+                    entry.message.clone(),
+                )
             })
             .collect(),
         _ => {

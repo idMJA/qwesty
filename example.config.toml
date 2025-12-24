@@ -18,10 +18,14 @@ super_properties = "your_base64_super_properties"
 [[discord.webhooks]]
 name = "Channel A"
 url = "https://discordapp.com/api/webhooks/YOUR_ID/YOUR_TOKEN"
+# optional per-webhook plain message that will be sent as the top-level `content`
+# (appears outside the embed/container). Example:
+# message = "hai everyone!"
 
 # [[discord.webhooks]]
 # name = "Channel B"
 # url = "https://discordapp.com/api/webhooks/YOUR_ID/YOUR_TOKEN_B"
+# message = "hai everyone!"
 
 # you can add more webhook entries as needed
 

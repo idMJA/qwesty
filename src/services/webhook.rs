@@ -12,15 +12,16 @@ pub struct WebhookNotifier {
     name: Option<String>,
     webhook_url: String,
     client: reqwest::Client,
+    message: Option<String>,
 }
 
 impl WebhookNotifier {
-    #[must_use]
-    pub fn new(webhook_url: String, name: Option<String>) -> Self {
+    pub fn new(webhook_url: String, name: Option<String>, message: Option<String>) -> Self {
         Self {
             name,
             webhook_url,
             client: reqwest::Client::new(),
+            message,
         }
     }
 
@@ -70,7 +71,26 @@ impl WebhookNotifier {
             color,
         };
 
-        let container = build_webhook_container(&content);
+        let mut container = build_webhook_container(&content);
+
+        // if a per-webhook `message` is configured, inject it as the first
+        // text component inside the container instead of using the top-level
+        // `content` field, which Discord rejects when using
+        // MessageFlags.IS_COMPONENTS_V2 (flags=32768).
+        if let Some(msg) = &self.message {
+            let trimmed = msg.trim();
+            if !trimmed.is_empty() {
+                if let Some(arr) = container
+                    .as_object_mut()
+                    .and_then(|o| o.get_mut("components"))
+                    .and_then(|c| c.as_array_mut())
+                {
+                    arr.insert(0, json!({ "type": 14, "divider": true, "spacing": 1 }));
+                    arr.insert(1, json!({ "type": 10, "content": trimmed }));
+                    arr.insert(2, json!({ "type": 14, "divider": true, "spacing": 1 }));
+                }
+            }
+        }
 
         let payload = json!({ "components": [container], "flags": 32768 });
 
@@ -166,7 +186,7 @@ fn build_tasks_desc(task_config: Option<&crate::models::QuestTaskConfigV2>) -> S
         || String::from("## Tasks\n\nN/A"),
         |cfg| {
             let mut desc =
-                String::from("## Tasks\n\nUsers must complete any of the following tasks");
+                String::from("## Tasks\n\nUsers must complete any of the following tasks\n");
             for (task_type, task) in &cfg.tasks {
                 let platform = match task_type.as_str() {
                     "PLAY_ON_DESKTOP" => "Play on desktop",
@@ -179,7 +199,7 @@ fn build_tasks_desc(task_config: Option<&crate::models::QuestTaskConfigV2>) -> S
                 // target is in seconds; display minutes rounded up (59s -> 1 minute)
                 let minutes = task.target.div_ceil(60);
                 let unit = if minutes == 1 { "minute" } else { "minutes" };
-                let _ = writeln!(desc, "\n- {platform} ({minutes} {unit})");
+                let _ = writeln!(desc, "- {platform} ({minutes} {unit})");
             }
             desc
         },
@@ -346,21 +366,33 @@ fn build_webhook_container(content: &WebhookContent) -> serde_json::Value {
             },
             {
                 "type": 1,
-                "components": [{
-                    "type": 2,
-                    "style": 5,
-                    "label": content
-                        .config
-                        .cta_config
-                        .as_ref()
-                        .map_or("Go To Quests", |c| c.button_label.as_str()),
-                    "emoji": {
-                        "name": "🚀",
-                        "id": null
+                "components": [
+                    {
+                        "type": 2,
+                        "style": 5,
+                        "label": content
+                            .config
+                            .cta_config
+                            .as_ref()
+                            .map_or("Go To Quests", |c| c.button_label.as_str()),
+                        "emoji": {
+                            "name": "🚀",
+                            "id": null
+                        },
+                        "disabled": false,
+                        "url": content.quest_url
                     },
-                    "disabled": false,
-                    "url": content.quest_url
-                }]
+                    {
+                        "type": 2,
+                        "style": 5,
+                        "label": "Open Source",
+                        "emoji": {
+                            "name": "📦",
+                            "id": null
+                        },
+                        "disabled": false,
+                        "url": "https://github.com/idMJA/qwesty"
+                    }]
             }
         ]
     })

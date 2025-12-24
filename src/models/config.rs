@@ -22,6 +22,8 @@ pub struct DiscordConfig {
 pub struct WebhookEntry {
     pub name: Option<String>,
     pub url: String,
+    #[serde(default)]
+    pub message: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
