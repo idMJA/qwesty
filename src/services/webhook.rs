@@ -1,5 +1,5 @@
 use crate::models::{NotifyError, Quest};
-use crate::utils::{parse_color, parse_timestamp, DEFAULT_REWARD_URL};
+use crate::utils::{parse_timestamp, select_quest_accent_color, DEFAULT_REWARD_URL};
 use log::{debug, error, info};
 use serde_json::json;
 use std::time::Duration;
@@ -16,6 +16,7 @@ pub struct WebhookNotifier {
 }
 
 impl WebhookNotifier {
+    #[must_use]
     pub fn new(webhook_url: String, name: Option<String>, message: Option<String>) -> Self {
         Self {
             name,
@@ -45,7 +46,11 @@ impl WebhookNotifier {
 
     async fn send_full_quest_notification(&self, quest: &Quest) -> Result<(), NotifyError> {
         let config = &quest.config;
-        let color = parse_color(&config.colors.primary, 0x0058_65F2);
+        let color = select_quest_accent_color(
+            &config.colors.primary,
+            &config.colors.secondary,
+            0x0058_65F2,
+        );
         let hero_url = format!("{}{}", DISCORD_CDN, config.assets.hero);
         let quest_url = format!("https://discord.com/quests/{}", config.id);
 
@@ -289,110 +294,109 @@ struct WebhookContent<'a> {
 }
 
 fn build_webhook_container(content: &WebhookContent) -> serde_json::Value {
+    let components = vec![
+        json!({
+            "type": 10,
+            "content": format!(
+                "## [{}]({})",
+                content.config.messages.quest_name,
+                content.quest_url
+            )
+        }),
+        json!({
+            "type": 12,
+            "items": [{
+                "media": {
+                    "url": content.hero_url
+                },
+                "description": null,
+                "spoiler": false
+            }]
+        }),
+        divider_component(),
+        json!({
+            "type": 10,
+            "content": content.quest_info
+        }),
+        divider_component(),
+        json!({
+            "type": 10,
+            "content": content.tasks_desc
+        }),
+        divider_component(),
+        reward_component(content),
+        divider_component(),
+        json!({
+            "type": 10,
+            "content": format!("-# Quest ID: `{}`", content.config.id)
+        }),
+        divider_component(),
+        action_buttons_component(content),
+    ];
+
     json!({
         "type": 17,
         "accent_color": content.color,
         "spoiler": false,
+        "components": components
+    })
+}
+
+fn divider_component() -> serde_json::Value {
+    json!({
+        "type": 14,
+        "divider": true,
+        "spacing": 1
+    })
+}
+
+fn reward_component(content: &WebhookContent) -> serde_json::Value {
+    json!({
+        "type": 9,
+        "accessory": {
+            "type": 11,
+            "media": {
+                "url": content.reward_media_url
+            },
+            "description": null,
+            "spoiler": false
+        },
+        "components": [{
+            "type": 10,
+            "content": content.rewards_desc
+        }]
+    })
+}
+
+fn action_buttons_component(content: &WebhookContent) -> serde_json::Value {
+    json!({
+        "type": 1,
         "components": [
             {
-                "type": 10,
-                "content": format!(
-                    "## [{}]({})",
-                    content.config.messages.quest_name,
-                    content.quest_url
-                )
-            },
-            {
-                "type": 12,
-                "items": [{
-                    "media": {
-                        "url": content.hero_url
-                    },
-                    "description": null,
-                    "spoiler": false
-                }]
-            },
-            {
-                "type": 14,
-                "divider": true,
-                "spacing": 1
-            },
-            {
-                "type": 10,
-                "content": content.quest_info
-            },
-            {
-                "type": 14,
-                "divider": true,
-                "spacing": 1
-            },
-            {
-                "type": 10,
-                "content": content.tasks_desc
-            },
-            {
-                "type": 14,
-                "divider": true,
-                "spacing": 1
-            },
-            {
-                "type": 9,
-                "accessory": {
-                    "type": 11,
-                    "media": {
-                            "url": content.reward_media_url
-                    },
-                    "description": null,
-                    "spoiler": false
+                "type": 2,
+                "style": 5,
+                "label": content
+                    .config
+                    .cta_config
+                    .as_ref()
+                    .map_or("Go To Quests", |c| c.button_label.as_str()),
+                "emoji": {
+                    "name": "🚀",
+                    "id": null
                 },
-                "components": [{
-                    "type": 10,
-                        "content": content.rewards_desc
-                }]
+                "disabled": false,
+                "url": content.quest_url
             },
             {
-                "type": 14,
-                "divider": true,
-                "spacing": 1
-            },
-            {
-                "type": 10,
-                "content": format!("-# Quest ID: `{}`", content.config.id)
-            },
-            {
-                "type": 14,
-                "divider": true,
-                "spacing": 1
-            },
-            {
-                "type": 1,
-                "components": [
-                    {
-                        "type": 2,
-                        "style": 5,
-                        "label": content
-                            .config
-                            .cta_config
-                            .as_ref()
-                            .map_or("Go To Quests", |c| c.button_label.as_str()),
-                        "emoji": {
-                            "name": "🚀",
-                            "id": null
-                        },
-                        "disabled": false,
-                        "url": content.quest_url
-                    },
-                    {
-                        "type": 2,
-                        "style": 5,
-                        "label": "Open Source",
-                        "emoji": {
-                            "name": "📦",
-                            "id": null
-                        },
-                        "disabled": false,
-                        "url": "https://github.com/idMJA/qwesty"
-                    }]
+                "type": 2,
+                "style": 5,
+                "label": "Open Source",
+                "emoji": {
+                    "name": "📦",
+                    "id": null
+                },
+                "disabled": false,
+                "url": "https://github.com/idMJA/qwesty"
             }
         ]
     })
