@@ -112,23 +112,32 @@ fn init_app(config: &Config) -> Result<AppInit, Box<dyn std::error::Error>> {
 
     let client = QuestClient::new(config.super_properties().to_string());
 
-    // support multiple webhooks defined under [discord] as [[discord.webhooks]] = [{ name = "x", url = "..." }, ...]
-    let notifiers: Vec<services::webhook::WebhookNotifier> = match &config.discord.webhooks {
-        Some(entries) if !entries.is_empty() => entries
-            .iter()
-            .map(|entry| {
-                services::webhook::WebhookNotifier::new(
-                    entry.url.clone(),
-                    entry.name.clone(),
-                    entry.message.clone(),
-                )
-            })
-            .collect(),
-        _ => {
-            if config.is_agent() {
-                // agent mode does not require webhooks
-                Vec::new()
-            } else {
+    // collector-only: support multiple webhooks defined under [discord] as [[discord.webhooks]] entries.
+    let notifiers: Vec<services::webhook::WebhookNotifier> = if config.is_agent() {
+        if config
+            .discord
+            .webhooks
+            .as_ref()
+            .is_some_and(|entries| !entries.is_empty())
+        {
+            info!(
+                "role=agent, webhook entries are ignored; notifications are handled by collector"
+            );
+        }
+        Vec::new()
+    } else {
+        match &config.discord.webhooks {
+            Some(entries) if !entries.is_empty() => entries
+                .iter()
+                .map(|entry| {
+                    services::webhook::WebhookNotifier::new(
+                        entry.url.clone(),
+                        entry.name.clone(),
+                        entry.message.clone(),
+                    )
+                })
+                .collect(),
+            _ => {
                 return Err(Box::<dyn std::error::Error>::from(AppError(
                     "No webhooks configured. Please add [[discord.webhooks]] entries in config.toml"
                         .to_string(),
@@ -153,12 +162,14 @@ fn init_app(config: &Config) -> Result<AppInit, Box<dyn std::error::Error>> {
         .as_ref()
         .and_then(|entries| entries.first().cloned());
 
-    if let Some(primary) = primary_webhook {
-        info!(
-            "Primary webhook configured: {} {}",
-            primary.name.unwrap_or_else(|| "(unnamed)".to_string()),
-            primary.url
-        );
+    if config.is_collector() {
+        if let Some(primary) = primary_webhook {
+            info!(
+                "Primary webhook configured: {} {}",
+                primary.name.unwrap_or_else(|| "(unnamed)".to_string()),
+                primary.url
+            );
+        }
     }
 
     let locales_to_check: Vec<String> = if config.is_agent() {

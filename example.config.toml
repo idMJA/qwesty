@@ -5,14 +5,16 @@
 # Your Discord user token
 token = "your_discord_user_token"
 
-# Locale mode: "single" (en-US) or "all" (check all 33+ locales)
+# Locale mode: "single" (one locale) or "all" (check all supported locales)
 locale_mode = "single"
 
 # Discord super properties header (X-Super-Properties) base64 JSON string
 # Optional: if not set or invalid, a default fallback will be used automatically
 super_properties = "your_base64_super_properties"
 
-# Discord webhook entries for notifications (define one or more webhooks as entries under [[discord.webhooks]])
+# Discord webhook entries for notifications (collector mode only)
+# If role = "collector", at least one [[discord.webhooks]] entry is required.
+# If role = "agent", webhooks are optional and can be removed.
 
 ## Multiple webhooks example:
 [[discord.webhooks]]
@@ -50,14 +52,15 @@ initial_send_all = false
 
 [mode]
 # role can be "agent" or "collector"
-# For a simple single-instance setup, use "agent" role. The agent will fetch quests and send notifications directly.
-role = "agent"
+# For a simple single-instance setup, use "collector" role.
+# Collector fetches quests and sends notifications via configured webhooks.
+role = "collector"
 
-# For agents only: where to send ingestion
+# For agents only: where to send ingestion (required when role = "agent")
 # collector_url = "https://host-a.example.com/ingest"
 # collector_token = "super-secret"
 
-# For collector only: token to accept from agents
+# For collector only: token to accept from agents (optional if not using remote agents)
 # accept_token = "super-secret"
 
 # For collector only: port for ingest server (default 8080)

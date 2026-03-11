@@ -28,7 +28,8 @@ A Rust-based Discord Quest Notifier that automatically fetches available quests 
    ```
 3. **Edit config:**
    - Add Discord user token ([How to get your token](https://gist.github.com/MarvNC/e601f3603df22f36ebd3102c501116c6))
-   - Add webhook URLs under `[[discord.webhooks]]`
+  - For single-instance setup, set `[mode].role = "collector"`
+  - Add webhook URLs under `[[discord.webhooks]]`
 
 > [!TIP]
 > You can add multiple webhooks to send notifications to different Discord channels.
@@ -51,14 +52,32 @@ A Rust-based Discord Quest Notifier that automatically fetches available quests 
 ## Configuration
 
 ### Required Fields
+For **collector** mode (single-instance/default):
 ```toml
 [discord]
 token = "your_discord_user_token"
+
+[mode]
+role = "collector"
 
 [[discord.webhooks]]
 url = "https://discordapp.com/api/webhooks/YOUR_ID/YOUR_TOKEN"
 name = "Optional webhook name"  # optional
 ```
+
+For **agent** mode:
+```toml
+[discord]
+token = "your_discord_user_token"
+
+[mode]
+role = "agent"
+collector_url = "https://your-collector.example.com/ingest"
+collector_token = "your-shared-secret"
+```
+
+> [!NOTE]
+> Agent mode does not require `[[discord.webhooks]]`.
 
 > [!NOTE]
 > The `super_properties` field is optional. You can generate it using the browser console if needed.
@@ -113,6 +132,7 @@ name = "Optional webhook name"  # optional
 | `run_once` | `false` | Exit after first check (useful for cron) |
 | `storage_type` | `json` | `json` or `memory` |
 | `storage_path` | `./known-quests.json` | Where to store quest data |
+| `initial_send_all` | `false` | Send all currently available quests on first run |
 
 ## Usage
 
@@ -229,18 +249,18 @@ docker run -v $(pwd)/config.toml:/app/config.toml:ro qwesty
 ## Multi-Locale Mode
 
 When `locale_mode = "all"`:
-- Checks all 33+ Discord locales sequentially
+- Checks all configured Discord locales sequentially (currently 31)
 - 60-70s random delay between checks (rate limiting)
-- ~35-40 minutes per full cycle
+- ~33-38 minutes per full cycle
 - Quests deduplicated by ID across locales
 
 ## Webhook Notification Format
 
 Notifications are sent as Discord embeds with:
 - Quest name and game title
-- Reward type (Orbs 🟣, Decorations 🟢, or Other ⚫)
+- Reward details
 - Expiration time
-- Color-coded by reward type
+- Fixed accent color (Discord blurple)
 
 ## Troubleshooting
 
@@ -248,7 +268,7 @@ Notifications are sent as Discord embeds with:
 |-------|----------|
 | `config.toml not found` | Run `cp example.config.toml config.toml` |
 | No token configured | Add `token = "..."` in `[discord]` section |
-| No webhooks configured | Add `[[discord.webhooks]]` with `url` field |
+| No webhooks configured | In collector mode, add `[[discord.webhooks]]` with `url` field |
 | Failed to fetch quests | Verify token validity with Discord API |
 | No notifications sent | Check if webhook URLs are correct and reward filter matches |
 
@@ -264,7 +284,8 @@ src/
 │   ├── errors.rs       # Error types
 │   └── mod.rs
 ├── services/
-│   ├── quest_client.rs # Discord API client
+│   ├── client.rs       # Discord API client
+│   ├── ingest.rs       # Agent ingest HTTP server (collector mode)
 │   ├── webhook.rs      # Webhook sender
 │   ├── storage.rs      # Quest persistence
 │   └── mod.rs
