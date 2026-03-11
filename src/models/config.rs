@@ -38,7 +38,7 @@ pub struct NotifierConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModeConfig {
-    /// "collector" | "agent"
+    /// "agent" | "collector"
     pub role: Option<String>,
     /// Only for agents
     pub collector_url: Option<String>,
