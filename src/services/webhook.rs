@@ -1,11 +1,12 @@
 use crate::models::{NotifyError, Quest};
-use crate::utils::{parse_timestamp, select_quest_accent_color, DEFAULT_REWARD_URL};
+use crate::utils::{parse_timestamp, DEFAULT_REWARD_URL};
 use log::{debug, error, info};
 use serde_json::json;
 use std::time::Duration;
 use tokio::time::sleep;
 
 const DISCORD_CDN: &str = "https://cdn.discordapp.com/";
+const DISCORD_BLURPLE: u32 = 0x0058_65F2;
 
 #[derive(Clone)]
 pub struct WebhookNotifier {
@@ -46,11 +47,7 @@ impl WebhookNotifier {
 
     async fn send_full_quest_notification(&self, quest: &Quest) -> Result<(), NotifyError> {
         let config = &quest.config;
-        let color = select_quest_accent_color(
-            &config.colors.primary,
-            &config.colors.secondary,
-            0x0058_65F2,
-        );
+        let color = DISCORD_BLURPLE;
         let hero_url = format!("{}{}", DISCORD_CDN, config.assets.hero);
         let quest_url = format!("https://discord.com/quests/{}", config.id);
 

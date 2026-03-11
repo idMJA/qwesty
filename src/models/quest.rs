@@ -17,7 +17,6 @@ pub struct QuestConfig {
     pub features: Vec<u32>,
     pub application: QuestApplication,
     pub assets: QuestAssets,
-    pub colors: QuestColors,
     pub messages: QuestMessages,
     pub task_config: Option<QuestTaskConfig>,
     pub task_config_v2: Option<QuestTaskConfigV2>,
@@ -45,12 +44,6 @@ pub struct QuestAssets {
     pub game_tile: Option<String>,
     #[serde(default)]
     pub logotype: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct QuestColors {
-    pub primary: String,
-    pub secondary: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

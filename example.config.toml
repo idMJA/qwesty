@@ -41,6 +41,7 @@ run_once = false
 storage_type = "memory"
 
 # Path where to store the JSON file (relative or absolute)
+# If u're using Pterodactyl or similar, make sure to set this to a writable path outside of the app's code directory, e.g. "/home/container/known-quests.json"
 storage_path = "./known-quests.json"
 
 # If true, the notifier will send notifications for all currently available quests on first run.
@@ -49,7 +50,7 @@ initial_send_all = false
 
 [mode]
 # role can be "collector" or "agent"
-role = "collector"
+role = "agent"
 
 # For agents only: where to send ingestion
 # collector_url = "https://host-a.example.com/ingest"
